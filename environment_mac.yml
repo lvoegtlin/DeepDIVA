@@ -36,11 +36,8 @@ dependencies:
   - llvm-meta=6.0.1=0
   - llvmdev=6.0.1=hf8ce74a_2
   - matplotlib=2.1.2=py35_0
-  - mkl_fft=1.0.6=py35_0
-  - mkl_random=1.0.1=py35_0
   - ncurses=6.1=hfc679d8_1
   - nettle=3.3=0
-  - ninja=1.8.2=h2d50403_1
   - olefile=0.46=py_0
   - openblas=0.2.20=8
   - openssl=1.0.2p=h470a237_0
@@ -57,7 +54,7 @@ dependencies:
   - pytz=2018.5=py_0
   - readline=7.0=haf1bffa_1
   - seaborn=0.8.1=py_1
-  - setuptools=40.4.0=py35_1000
+  - setuptools=40.4.3=py35_0
   - six=1.11.0=py35_1
   - sqlite=3.25.2=hb1c47c0_0
   - statsmodels=0.9.0=py35_0
@@ -70,16 +67,14 @@ dependencies:
   - blas=1.0=mkl
   - intel-openmp=2019.0=118
   - libgfortran=3.0.1=h93005f0_2
-  - libopenblas=0.3.3=hdc02c5d_3
   - libprotobuf=3.4.1=h326466f_0
   - mkl=2019.0=118
   - numpy=1.14.1=py35ha726252_2
-  - numpy-base=1.15.2=py35h8a80b8c_0
   - opencv=3.3.1=py35h60a5f38_1
   - scikit-learn=0.19.1=py35h2b554eb_0
   - scipy=1.0.0=py35h8b35106_0
-  - pytorch=0.4.1=py35_cuda0.0_cudnn0.0_1
-  - torchvision=0.2.1=py35_1
+  - pytorch=0.3.1=py35_cuda0.0_cudnn0.0_2
+  - torchvision=0.2.0=py35hca7d7b7_1
   - pip:
     - absl-py==0.5.0
     - astor==0.7.1
@@ -99,7 +94,7 @@ dependencies:
     - tensorflow==1.6.0
     - tensorflow-tensorboard==1.5.1
     - termcolor==1.1.0
-    - torch==0.4.1
+    - torch==0.3.1.post2
     - tqdm==4.19.6
     - urllib3==1.23
     - werkzeug==0.14.1
