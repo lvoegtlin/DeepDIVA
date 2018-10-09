@@ -28,6 +28,7 @@ def parse_arguments(args=None):
     _optimizer_options(parser)
     _system_options(parser)
     _triplet_options(parser)
+    _phocnet_options(parser)
 
     ###############################################################################
     # Parse argument
@@ -52,7 +53,7 @@ def _general_parameters(parser):
     General options
     """
     # List of possible custom runner class. A runner class is defined as a module in template.runner
-    runner_class_options = ["image_classification", "point_cloud", "triplet", "apply_model"]
+    runner_class_options = ["image_classification", "point_cloud", "triplet", "apply_model", "key_word_spotting"]
 
     parser_general = parser.add_argument_group('GENERAL', 'General Options')
     parser_general.add_argument('--experiment-name',
@@ -278,3 +279,23 @@ def _triplet_options(parser):
                                 type=int,
                                 default=5, metavar='N',
                                 help='re-generate triplets every N epochs')
+
+def _phocnet_options(parser):
+    """
+    PHOCNet options
+
+    These parameters are specific for the PHOCNET runner class (template.runner.key_word_spotting)
+
+    """
+    parser_phocnet = parser.add_argument_group('PHOCNet', 'PHOCNet Options')
+    parser_phocnet.add_argument('--phocnet-train-xml-path',
+                                type=str,
+                                help='Path to the train xml for PHOCNet')
+    parser_phocnet.add_argument('--phocnet-test-xml-path',
+                                type=str,
+                                help='Path to the test xml for PHOCNet')
+    parser_phocnet.add_argument('--phocnet-use-lower-case-only',
+                                type=bool,
+                                default=False,
+                                help='Flag indicating to convert all annotations from the XML to lower case before '
+                                   'proceeding for PHOCNet')

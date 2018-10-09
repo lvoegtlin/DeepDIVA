@@ -113,3 +113,7 @@ ENV/
 _build
 _static
 _templates
+
+/datasets/*
+/toy_dataset/*
+/log/*
