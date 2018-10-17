@@ -9,6 +9,7 @@ import torch
 import models
 import sys
 
+
 def parse_arguments(args=None):
     """
     Argument Parser
@@ -28,6 +29,7 @@ def parse_arguments(args=None):
     _optimizer_options(parser)
     _system_options(parser)
     _triplet_options(parser)
+    _phocnet_options(parser)
 
     ###############################################################################
     # Parse argument
@@ -52,7 +54,7 @@ def _general_parameters(parser):
     General options
     """
     # List of possible custom runner class. A runner class is defined as a module in template.runner
-    runner_class_options = ["image_classification", "point_cloud", "triplet", "apply_model"]
+    runner_class_options = ["image_classification", "point_cloud", "triplet", "apply_model", "key_word_spotting"]
 
     parser_general = parser.add_argument_group('GENERAL', 'General Options')
     parser_general.add_argument('--experiment-name',
@@ -278,3 +280,18 @@ def _triplet_options(parser):
                                 type=int,
                                 default=5, metavar='N',
                                 help='re-generate triplets every N epochs')
+
+
+def _phocnet_options(parser):
+    """
+    PHOCNet options
+
+    These parameters are used by the runner class template.runner.key_word_spoting
+    """
+
+    parser_phocnet = parser.add_argument_group('PHOCNET', 'PHOCNet Options')
+    parser_phocnet.add_argument('--phoc_unigram_levels', '-pul',
+                                action='store',
+                                type=lambda str_list: [int(elem) for elem in str_list.split(',')],
+                                default='1,2,4,8',
+                                help='The comma seperated list of PHOC unigram levels. Default: 1,2,4,8')
