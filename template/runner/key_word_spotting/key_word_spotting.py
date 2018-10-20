@@ -6,7 +6,7 @@ import models
 
 from template.setup import set_up_model
 from template.runner.key_word_spotting.setup import setup_dataloaders
-from template.runner.key_word_spotting import evaluate, train
+from template.runner.key_word_spotting import train
 
 
 class KeyWordSpotting:
@@ -19,7 +19,7 @@ class KeyWordSpotting:
         """
 
         # Setting up the dataloaders
-        train_loader, val_loader, test_loader, num_classes = setup_dataloaders(batch_size=1, **kwargs)
+        train_loader, test_loader, num_classes = setup_dataloaders(batch_size=1, **kwargs)
 
         # Setting up model, optimizer, criterion
         model, criterion, optimizer, best_value, start_epoch = set_up_model(num_classes=num_classes,
@@ -28,32 +28,26 @@ class KeyWordSpotting:
                                                                             train_loader=train_loader,
                                                                             **kwargs)
 
-        model.init_weights()
 
         # Core routine
         logging.info('Begin training')
         val_value = np.zeros((epochs - start_epoch))
         train_value = np.zeros((epochs - start_epoch))
 
-        KeyWordSpotting._validate(val_loader, model, None, writer, -1, **kwargs)
 
         for epoch in range(start_epoch, epochs):
             # Train
-            train_value[epoch] = KeyWordSpotting._train(train_loader=train_loader,
+            train_value[epoch] = KeyWordSpotting._train(train_loader=test_loader,
                                                         model=model,
                                                         criterion=criterion,
                                                         optimizer=optimizer,
                                                         writer=writer,
                                                         epoch=epoch,
+                                                        batch_size=batch_size,
                                                         **kwargs)
             # Validate
             if epoch % validation_interval == 0:
-                val_value[epoch] = KeyWordSpotting._validate(val_loader=val_loader,
-                                                             model=model,
-                                                             criterion=criterion,
-                                                             writer=writer,
-                                                             epoch=epoch,
-                                                             **kwargs)
+                val_value[epoch] = KeyWordSpotting._validate(test_loader, model, None, writer, -1, **kwargs)
 
         # Test
         logging.info('Training completed')
@@ -72,8 +66,8 @@ class KeyWordSpotting:
     # It is useful because sub-classes can selectively change the logic of certain parts only.
 
     @classmethod
-    def _train(cls, train_loader, model, criterion, optimizer, writer, epoch, **kwargs):
-        return train.train(train_loader, model, criterion, optimizer, writer, epoch, **kwargs)
+    def _train(cls, train_loader, model, optimizer, batch_size, **kwargs):
+        return train.train(train_loader, model, optimizer, batch_size, **kwargs)
 
     @classmethod
     def _validate(cls, val_loader, model, criterion, writer, epoch, **kwargs):

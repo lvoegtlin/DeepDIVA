@@ -5,6 +5,7 @@ import logging
 import os
 
 # Torch
+import torch
 import torchvision.transforms as transforms
 
 # DeepDIVA
@@ -46,31 +47,58 @@ def setup_dataloaders(dataset_folder, batch_size, workers, inmem, phoc_unigram_l
 
     ###############################################################################################
     # Load the dataset splits as images
-    train_ds, val_ds, test_ds = load_dataset(dataset_folder=dataset_folder,
-                                             in_memory=inmem,
-                                             workers=workers,
-                                             phoc_unigram_levels=phoc_unigram_levels)
+    train_ds, test_ds = load_dataset(dataset_folder=dataset_folder,
+                                     phoc_unigram_levels=phoc_unigram_levels)
 
-    # Loads the analytics csv and extract mean and std
-    mean, std = _load_mean_std_from_file(dataset_folder=dataset_folder,
-                                         inmem=inmem,
-                                         workers=workers)
+
 
     # Set up dataset transforms
     logging.debug('Setting up dataset transforms')
 
     standard_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=mean, std=std)
+        transforms.ToTensor()
     ])
 
     train_ds.transform = standard_transform
-    val_ds.transform = standard_transform
     test_ds.transform = standard_transform
 
-    train_loader, val_loader, test_loader = _dataloaders_from_datasets(batch_size=batch_size,
+    train_loader, test_loader = _dataloaders_from_datasets(batch_size=batch_size,
                                                                        train_ds=train_ds,
-                                                                       val_ds=val_ds,
                                                                        test_ds=test_ds,
                                                                        workers=workers)
-    return train_loader, val_loader, test_loader, len(train_ds.classes)
+    return train_loader, test_loader, train_ds[0][1].shape[0]
+
+
+def _dataloaders_from_datasets(batch_size, train_ds, test_ds, workers):
+    """
+    This function creates (and returns) dataloader from datasets objects
+
+    Parameters
+    ----------
+    batch_size : int
+        The size of the mini batch
+    train_ds : data.Dataset
+    test_ds : data.Dataset
+        Train, validation and test splits
+    workers:
+        Number of workers to use to load the data.
+
+    Returns
+    -------
+    train_loader : torch.utils.data.DataLoader
+    val_loader : torch.utils.data.DataLoader
+    test_loader : torch.utils.data.DataLoader
+        The dataloaders for each split passed
+    """
+    # Setup dataloaders
+    logging.debug('Setting up dataloaders')
+    train_loader = torch.utils.data.DataLoader(train_ds,
+                                               shuffle=True,
+                                               batch_size=batch_size,
+                                               num_workers=workers,
+                                               pin_memory=True)
+    test_loader = torch.utils.data.DataLoader(test_ds,
+                                              batch_size=batch_size,
+                                              num_workers=workers,
+                                              pin_memory=True)
+    return train_loader, test_loader

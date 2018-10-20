@@ -38,6 +38,8 @@ class PHOCNet(nn.Module):
         self.fc6 = nn.Linear(4096, 4096)
         self.fc7 = nn.Linear(4096, output_channels)
 
+        self.init_weights()
+
     def forward(self, x):
         y = F.relu(self.conv1_1(x))
         y = F.relu(self.conv1_2(y))

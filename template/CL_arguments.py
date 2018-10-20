@@ -9,6 +9,8 @@ import torch
 import models
 import sys
 
+from template.runner.key_word_spotting.train import learning_rate_step_parser
+
 
 def parse_arguments(args=None):
     """
@@ -295,3 +297,10 @@ def _phocnet_options(parser):
                                 type=lambda str_list: [int(elem) for elem in str_list.split(',')],
                                 default='1,2,4,8',
                                 help='The comma seperated list of PHOC unigram levels. Default: 1,2,4,8')
+    parser_phocnet.add_argument('--learning_rate_step', '-lrs', type=learning_rate_step_parser, default='60000:1e-4,100000:1e-5',
+                        help='A dictionary-like string indicating the learning rate for up to the number of iterations. ' +
+                             'E.g. the default \'70000:1e-4,80000:1e-5\' means learning rate 1e-4 up to step 70000 and 1e-5 till 80000.')
+    parser_phocnet.add_argument('--test_interval', action='store', type=int, default=2000,
+                        help='The number of iterations after which to periodically evaluate the PHOCNet. Default: 500')
+    parser_phocnet.add_argument('--iter_size', '-is', action='store', type=int, default=10,
+                        help='The batch size after which the gradient is computed. Default: 10')

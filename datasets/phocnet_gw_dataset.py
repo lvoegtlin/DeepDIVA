@@ -13,6 +13,7 @@ from sklearn.preprocessing import LabelEncoder
 from tqdm import tqdm
 
 from template.runner.key_word_spotting.homography_augmentation import HomographyAugmentation
+from template.runner.key_word_spotting.list_io import LineListIO
 
 
 def load_dataset(dataset_folder, in_memory=False, workers=1, phoc_unigram_levels=(1, 2, 4, 8)):
@@ -34,30 +35,14 @@ def load_dataset(dataset_folder, in_memory=False, workers=1, phoc_unigram_levels
         Returns
         -------
         train_ds : data.Dataset
-        val_ds : data.Dataset
         test_ds : data.Dataset
             Train, validation and test splits
         """
-    train_dir = os.path.join(dataset_folder, 'train')
-    val_dir = os.path.join(dataset_folder, 'val')
-    test_dir = os.path.join(dataset_folder, 'test')
 
-    # Sanity check on the splits folders
-    if not os.path.isdir(train_dir):
-        logging.error("Train folder not found in the args.dataset_folder=" + dataset_folder)
-        sys.exit(-1)
-    if not os.path.isdir(val_dir):
-        logging.error("Val folder not found in the args.dataset_folder=" + dataset_folder)
-        sys.exit(-1)
-    if not os.path.isdir(test_dir):
-        logging.error("Test folder not found in the args.dataset_folder=" + dataset_folder)
-        sys.exit(-1)
+    train_ds = ImageFolderWordSpotting(dataset_folder, phoc_unigram_levels=phoc_unigram_levels, dataset_type='train')
+    test_ds = ImageFolderWordSpotting(dataset_folder, phoc_unigram_levels=phoc_unigram_levels, dataset_type='test')
 
-    train_ds = ImageFolderWordSpotting(train_dir, phoc_unigram_levels=phoc_unigram_levels, dataset_type='train')
-    val_ds = ImageFolderWordSpotting(val_dir, phoc_unigram_levels=phoc_unigram_levels, dataset_type='val')
-    test_ds = ImageFolderWordSpotting(test_dir, phoc_unigram_levels=phoc_unigram_levels, dataset_type='test')
-
-    return train_ds, val_ds, test_ds
+    return train_ds, test_ds
 
 
 """
@@ -84,21 +69,31 @@ class ImageFolderWordSpotting(Dataset):
         '''
 
         # class members
+        self.word_list = None
         self.word_string_embeddings = None
         self.query_list = None
         self.label_encoder = None
-        self.weights = None
-        self.fixed_image_size = None
 
         # load the dataset
-        labels = sorted([elem for elem in os.listdir(path)])
-
+        img_filenames = sorted([elem for elem in os.listdir(os.path.join(path, 'images'))
+                                if elem.endswith(".tif")])
         words = []
-        for label in labels:
-            for word_img_name in [elem for elem in os.listdir(os.path.join(path, label))]:
-                page_id = word_img_name.split('-')[0]
-                word_img = img_io.imread(os.path.join(path, label, word_img_name))
-                words.append((1 - word_img.astype(np.float32) / 255.0, label, page_id))
+        for img_filename in img_filenames:
+            page_id = '.'.join(img_filename.split('.')[:-1])
+            doc_img = img_io.imread(os.path.join(path, 'images', img_filename))
+            # scale black pixels to 1 and white pixels to 0
+            doc_img = 1 - doc_img.astype(np.float32) / 255.0
+            annotation_filename = '.'.join(img_filename.split('.')[:-1] + ['gtp'])
+            annotation_lines = LineListIO.read_list(os.path.join(path,
+                                                                 'documents',
+                                                                 annotation_filename))
+            # each line is the annotation of a word image in the following format
+            #    <ul_x> <ul_y> <lr_x> <lr_y> <transcription>
+            for line in annotation_lines:
+                ul_x, ul_y, lr_x, lr_y, transcr = line.split(b' ')
+                ul_x, ul_y, lr_x, lr_y = int(ul_x), int(ul_y), int(lr_x), int(lr_y)
+                word_img = doc_img[ul_y:lr_y, ul_x:lr_x].copy()
+                words.append((word_img, transcr, page_id))
 
         self.words = words
 
@@ -112,20 +107,42 @@ class ImageFolderWordSpotting(Dataset):
         # create embedding for the word_list
         self.word_embeddings = None
         word_strings = [elem[1] for elem in words]
-
         self.word_embeddings = build_phoc_descriptor(words=word_strings,
                                                      phoc_unigrams=unigrams,
                                                      unigram_levels=phoc_unigram_levels)
 
         self.word_embeddings = self.word_embeddings.astype(np.float32)
 
-        self.classes = np.unique(labels)
+        # cv_split_idx as an input argument
+        self.cv_split_index = 1
 
-        self.transforms = HomographyAugmentation()
+        # CV splits as done in Almazan 2014
+        self.split_ids = np.load(os.path.join(path, 'almazan_cv_indices.npy'))
+
+        self.transforms = HomographyAugmentation() if dataset_type == 'train' else None
+
+        if dataset_type not in [None, 'train', 'test']:
+            raise ValueError('partition must be one of None, train or test')
+
+        if dataset_type is not None:
+            if dataset_type == 'train':
+                self.word_list = [word for word, split_id in zip(self.words, self.split_ids)
+                                  if split_id != self.cv_split_index]
+                self.word_string_embeddings = [string for string, split_id in zip(self.word_embeddings, self.split_ids)
+                                               if split_id != self.cv_split_index]
+            else:
+                self.word_list = [word for word, split_id in zip(self.words, self.split_ids)
+                                  if split_id == self.cv_split_index]
+                self.word_string_embeddings = [string for string, split_id in zip(self.word_embeddings, self.split_ids)
+                                               if split_id == self.cv_split_index]
+        else:
+            # use the entire dataset
+            self.word_list = self.words
+            self.word_string_embeddings = self.word_embeddings
 
         if dataset_type == 'test':
             # create queries
-            word_strings = [elem[1] for elem in self.words]
+            word_strings = [elem[1] for elem in self.word_list]
             unique_word_strings, counts = np.unique(word_strings, return_counts=True)
             qry_word_ids = unique_word_strings[np.where(counts > 1)[0]]
 
@@ -135,7 +152,7 @@ class ImageFolderWordSpotting(Dataset):
 
             self.query_list = query_list
         else:
-            word_strings = [elem[1] for elem in self.words]
+            word_strings = [elem[1] for elem in self.word_list]
             self.query_list = np.zeros(len(word_strings), np.int8)
 
         if dataset_type == 'train':
@@ -159,7 +176,7 @@ class ImageFolderWordSpotting(Dataset):
             word_img = self.transforms(word_img)
 
         # fixed size image !!!
-        word_img = self._image_resize(word_img, self.fixed_image_size)
+        word_img = self._image_resize(word_img, None)
 
         word_img = word_img.reshape((1,) + word_img.shape)
         word_img = torch.from_numpy(word_img)
